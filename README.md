@@ -1,0 +1,2 @@
+# Statica
+Simple code editor
