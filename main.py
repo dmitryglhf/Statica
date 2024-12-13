@@ -1,11 +1,12 @@
 import sys
+import ctypes
 import os
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTreeView, QTextEdit, QTabWidget,
-                             QToolBar, QPushButton, QSplitter)
-from PyQt6.QtCore import Qt
+                             QToolBar, QPushButton, QSplitter, QSizePolicy)
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import (QStandardItemModel, QStandardItem, QIcon, QFont,
-                         QFontDatabase)
+                         QFontDatabase, QColor)
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtGui import QPixmap, QPainter
 
@@ -29,37 +30,34 @@ class CodeEditor(QWidget):
         super().__init__()
         layout = QVBoxLayout()
 
-        # Вкладки для открытых файлов
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
-        #self.tabs.tabCloseRequested.connect(self.close_tab)
+        self.tabs.tabCloseRequested.connect(self.close_tab)
 
-        # Первая пустая вкладка
         first_tab = QTextEdit()
         first_tab.setFont(QFont('JetBrains Mono', 10))
         first_tab.setStyleSheet("""
-            background-color: #1e1e1e;
+            background-color: #1f1f1f;
             color: #d4d4d4;
             border: none;
+            selection-background-color: #264f78;
         """)
 
         self.tabs.addTab(first_tab, "Untitled")
-
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
     def close_tab(self, index):
-        # Закрытие вкладки
         self.tabs.removeTab(index)
 
-        # Если не осталось вкладок, создаем новую пустую
         if self.tabs.count() == 0:
             first_tab = QTextEdit()
             first_tab.setFont(QFont('JetBrains Mono', 10))
             first_tab.setStyleSheet("""
-                background-color: #1e1e1e;
+                background-color: #1f1f1f;
                 color: #d4d4d4;
                 border: none;
+                selection-background-color: #264f78;
             """)
             self.tabs.addTab(first_tab, "Untitled")
 
@@ -67,53 +65,41 @@ class CodeEditor(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        # Загрузка шрифтов
         self.load_fonts()
-
         self.initUI()
 
     def load_fonts(self):
-        # Загрузка шрифтов Inter
-        inter_fonts = [
-            'Inter_18pt-Medium.ttf'
-        ]
-
-        # Загрузка шрифта JetBrains Mono
+        inter_fonts = ['Inter Medium.ttf']
         jetbrains_fonts = [
             'JetBrainsMono-Regular.ttf',
             'JetBrainsMono-Medium.ttf'
         ]
 
-        # Путь к шрифтам
         font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
 
-        # Загрузка шрифтов Inter
         for font in inter_fonts:
             QFontDatabase.addApplicationFont(os.path.join(font_dir, font))
 
-        # Загрузка шрифтов JetBrains Mono
         for font in jetbrains_fonts:
             QFontDatabase.addApplicationFont(os.path.join(font_dir, font))
 
     def initUI(self):
-        self.setWindowTitle('IDE')
+        self.setWindowTitle('Statica')
+        self.setWindowIcon(QIcon('source\logo.png'))
         self.resize(1200, 600)
 
-        # Центральный виджет
         central_widget = QWidget()
         main_layout = QHBoxLayout()
 
-        # Сплиттер для изменения размеров областей
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # Дерево проекта (слева, уменьшенная ширина)
         self.project_tree = QTreeView()
-        self.project_tree.setMaximumWidth(250)  # Уменьшена ширина
+        self.project_tree.setMaximumWidth(250)
         self.project_tree.setModel(self.create_project_model())
+        self.project_tree.setIndentation(10)
+        self.project_tree.header().hide()
         splitter.addWidget(self.project_tree)
 
-        # Виджет редактора кода
         self.code_editor = CodeEditor()
         splitter.addWidget(self.code_editor)
 
@@ -121,14 +107,14 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
-        # Создаем верхнее меню (тулбар)
         self.create_toolbar()
 
-        # Применяем глобальные стили
         self.setStyleSheet("""
             * {
-                font-family: 'Inter', sans-serif;
-                font-weight: 400;
+                font-family: 'Inter Medium'
+            }
+            QMainWindow {
+                background-color: #252525;
             }
             QWidget {
                 background-color: #1e1e1e;
@@ -142,17 +128,38 @@ class MainWindow(QMainWindow):
             QToolBar {
                 background-color: #252525;
                 spacing: 4px;
+                border: none;
+            }
+            QSplitter {
+                background-color: #252525;
+            }
+            QSplitter::handle {
+                background-color: #252525;
+                width: 2px;
             }
             QPushButton {
-                background-color: #365880;
-                color: #ffffff;
+                background-color: #252525;
+                color: #d4d4d4;
                 border: none;
                 padding: 5px;
                 margin: 5px;
                 font-weight: 500;
             }
             QPushButton:hover {
-                background-color: #4a6984;
+                background-color: #252525;
+            }
+            QTabWidget::pane {
+                background-color: #252525;
+                border: none;
+            }
+            QTabBar::tab {
+                background-color: #2c2c2c;
+                color: #d4d4d4;
+                padding: 5px 10px;
+                border: none;
+            }
+            QTabBar::tab:selected {
+                background-color: #3c3c3c;
             }
         """)
 
@@ -160,34 +167,73 @@ class MainWindow(QMainWindow):
         model = QStandardItemModel()
         root = model.invisibleRootItem()
 
-        project = QStandardItem('My Project')
-        src_folder = QStandardItem('src')
-        py_file = QStandardItem('main.py')
+        # Получаем текущую директорию
+        current_dir = os.getcwd()
+        current_dir_name = os.path.basename(current_dir)
 
-        project.appendRow(src_folder)
-        src_folder.appendRow(py_file)
+        project = QStandardItem(current_dir_name)
+        project.setForeground(QColor("#d4d4d4"))
+        project.setFont(QFont('Inter Medium', 10))
+        
+        # Рекурсивная функция для добавления подпапок и файлов
+        def add_dir_items(dir_path, parent_item):
+            for item in os.listdir(dir_path):
+                full_path = os.path.join(dir_path, item)
+                
+                # Показываем только Python файлы
+                if os.path.isfile(full_path) and item.endswith('.py'):
+                    file_item = QStandardItem(item)
+                    file_item.setForeground(QColor("#569cd6"))
+                    file_item.setFont(QFont('Inter Medium', 10))
+                    
+                    parent_item.appendRow(file_item)
+                
+                # Добавляем подпапки с рекурсивным просмотром
+                elif os.path.isdir(full_path):
+                    folder_item = QStandardItem(item)
+                    folder_item.setForeground(QColor("#d4d4d4"))
+                    folder_item.setFont(QFont('Inter Medium', 10))
+                    
+                    parent_item.appendRow(folder_item)
+                    
+                    # Рекурсивно добавляем содержимое подпапки
+                    add_dir_items(full_path, folder_item)
+
+        # Добавляем содержимое текущей директории
+        add_dir_items(current_dir, project)
 
         root.appendRow(project)
         return model
 
+
     def create_toolbar(self):
         toolbar = QToolBar()
+        toolbar.setStyleSheet("QToolBar { border: none; }")
+        toolbar.setIconSize(QSize(18, 18))
         self.addToolBar(toolbar)
 
         icon_dir = os.path.join(os.path.dirname(__file__), 'assets')
 
-        # Кнопки с иконками
         buttons = [
-            ('Save', 'disk.svg', self.save_file),
-            ('Run', 'play.svg', self.run_code),
-            ('Open', 'folder.svg', self.open_file)
+            ('Save', 'disk.svg'),
+            ('Open', 'folder.svg'),
+            ('Run', 'play.svg')
         ]
 
-        for name, icon, method in buttons:
+        for name, icon in buttons:
             btn = QPushButton()
-            btn.setIcon(SvgIcon(os.path.join(icon_dir, icon), 24))
+            btn.setIcon(SvgIcon(os.path.join(icon_dir, icon), 18, "#d4d4d4"))
             btn.setToolTip(name)
-            #btn.clicked.connect(method)
+            btn.setStyleSheet("""
+                QPushButton { 
+                    background: none; 
+                    border: none; 
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #3c3c3c;
+                }
+            """)
             toolbar.addWidget(btn)
 
     def save_file(self):
@@ -208,4 +254,8 @@ def main():
 
 
 if __name__ == '__main__':
+    # To set personal AppUserModelID for Statica process
+    myappid = 'StaticaID'  # ID
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     main()
