@@ -1,0 +1,2 @@
+code_field: RGB (30,30,30), HEX: #1e1e1e
+other_bars: RGB (37,37,37), HEX: #252525
