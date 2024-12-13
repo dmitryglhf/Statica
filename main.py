@@ -1,95 +1,139 @@
 import sys
-import ctypes
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTextEdit, QWidget
-from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor, QIcon, QAction
-from PyQt6.QtCore import Qt, QRegularExpression
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                             QHBoxLayout, QTreeView, QTextEdit, QMenuBar,
+                             QMenu, QToolBar, QPushButton, QSplitter)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 
-class Statica(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.initUI()
 
-        # Create window
-        self.setWindowTitle('Statica')
-        self.setWindowIcon(QIcon('source\logo.png'))
-        self.setGeometry(300, 300, 800, 600)
-        # Center window
-        self.center_window()
-        # Set font and font size
-        self.setFont(QFont("JetBrains Mono", 10))
-        # Text editor
-        self.text_edit = QTextEdit(self)
-        self.setCentralWidget(self.text_edit)
-        self.text_edit.setTabStopDistance(30)
+    def initUI(self):
+        # Основные настройки окна
+        self.setWindowTitle('IDE')
+        self.resize(1200, 800)
 
-        # Syntax highlighter
-        self.highlighter = PythonHighlighter(self.text_edit.document())
+        # Центральный виджет и основной layout
+        central_widget = QWidget()
+        main_layout = QHBoxLayout()
+
+        # Сплиттер для изменения размеров областей
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # Дерево проекта (слева)
+        self.project_tree = QTreeView()
+        self.project_tree.setModel(self.create_project_model())
+        splitter.addWidget(self.project_tree)
+
+        # Область кода (по центру)
+        self.code_editor = QTextEdit()
+        splitter.addWidget(self.code_editor)
+
+        # Добавляем сплиттер в основной layout
+        main_layout.addWidget(splitter)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+
+        # Создаем верхнее меню (тулбар)
+        self.create_toolbar()
+
+        # Создаем нижнее меню (терминал)
+        self.create_terminal()
+
+        # Применяем темную тему
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #2b2b2b;
+                color: #ffffff;
+            }
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3c3f41;
+            }
+            QTreeView {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3c3f41;
+            }
+            QToolBar {
+                background-color: #3c3f41;
+            }
+            QPushButton {
+                background-color: #365880;
+                color: #ffffff;
+                border: none;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #4b7399;
+            }
+        """)
+
+    def create_project_model(self):
+        # Создание модели для дерева проекта
+        model = QStandardItemModel()
+        root = model.invisibleRootItem()
+
+        # Пример структуры проекта
+        project = QStandardItem('My Project')
+        src_folder = QStandardItem('src')
+        py_file = QStandardItem('main.py')
+
+        project.appendRow(src_folder)
+        src_folder.appendRow(py_file)
+
+        root.appendRow(project)
+        return model
+
+    def create_toolbar(self):
+        # Создание верхней панели инструментов
+        toolbar = QToolBar()
+        self.addToolBar(toolbar)
+
+        # Кнопка сохранения
+        save_btn = QPushButton('Save')
+        #save_btn.clicked.connect(self.save_file)
+        toolbar.addWidget(save_btn)
+
+        # Кнопка запуска
+        run_btn = QPushButton('Run')
+        #run_btn.clicked.connect(self.run_code)
+        toolbar.addWidget(run_btn)
+
+    def create_terminal(self):
+        # Создание терминала
+        self.terminal = QTextEdit()
+        self.terminal.setMaximumHeight(200)
+        self.terminal.setReadOnly(True)
+
+        # Добавляем терминал в нижнюю часть
+        dock = QWidget()
+        dock_layout = QVBoxLayout()
+        dock_layout.addWidget(self.terminal)
+        dock.setLayout(dock_layout)
+
+        # Создаем dock виджет для терминала
+        #self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+
+    def save_file(self):
+        # Логика сохранения файла
+        print("Saving file...")
+
+    def run_code(self):
+        # Логика запуска кода
+        print("Running code...")
 
 
-    def center_window(self):
-        qr = self.frameGeometry()
-        cp = self.screen().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-
-class PythonHighlighter(QSyntaxHighlighter):
-    def __init__(self, document):
-        super().__init__(document)
-
-        # Text formats
-        self.keyword_format = QTextCharFormat()
-        self.keyword_format.setForeground(QColor("lightblue"))
-        self.keyword_format.setFontWeight(QFont.Weight.Bold)
-
-        self.string_format = QTextCharFormat()
-        self.string_format.setForeground(QColor("lightgreen"))
-
-        self.comment_format = QTextCharFormat()
-        self.comment_format.setForeground(QColor("gray"))
-
-        # Python keywords
-        self.keywords = [
-            "False", "None", "True", "and", "as", "assert", "async", "await",
-            "break", "class", "continue", "def", "del", "elif", "else", "except",
-            "finally", "for", "from", "global", "if", "import", "in", "is",
-            "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try",
-            "while", "with", "yield"
-        ]
-
-    def highlightBlock(self, text):
-        # Keywords highlighting
-        for keyword in self.keywords:
-            pattern = QRegularExpression(r"\b" + keyword + r"\b")
-            match = pattern.globalMatch(text)
-            while match.hasNext():
-                m = match.next()
-                self.setFormat(m.capturedStart(), m.capturedLength(), self.keyword_format)
-
-        # String highlighting
-        pattern = QRegularExpression(r"(\".*?\"|\'.*?\')")
-        match = pattern.globalMatch(text)
-        while match.hasNext():
-            m = match.next()
-            self.setFormat(m.capturedStart(), m.capturedLength(), self.string_format)
-
-        # Comments highlighting
-        pattern = QRegularExpression(r"#.*")
-        match = pattern.globalMatch(text)
-        while match.hasNext():
-            m = match.next()
-            self.setFormat(m.capturedStart(), m.capturedLength(), self.comment_format)
+def main():
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    # To set personal AppUserModelID for Statica process
-    myappid = 'StaticaID'  # ID
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-    app = QApplication(sys.argv)
-    # Set theme
-    app.setStyle('fusion')
-    # Code editor class
-    editor = Statica()
-    editor.show()
-    sys.exit(app.exec())
+    main()
